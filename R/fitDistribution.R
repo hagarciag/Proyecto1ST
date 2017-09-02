@@ -1,47 +1,131 @@
-# Hello, world!
-#
-# This is an example function named 'hello'
-# which prints 'Hello, world!'.
-#
-# You can learn more about package authoring with RStudio at:
-#
-#   http://r-pkgs.had.co.nz/
-#
-# Some useful keyboard shortcuts for package authoring:
-#
-#   Build and Reload Package:  'Ctrl + Shift + B'
-#   Check Package:             'Ctrl + Shift + E'
-#   Test Package:              'Ctrl + Shift + T'
-
-
-
-#https://shiny.rstudio.com/articles/function.html
-#https://github.com/jdvelasq/series-de-tiempo/blob/master/01-R-probabilidad.ipynb
-#http://janzilinsky.com/r-shiny-app-chart-tutorial-subsamples/
-#http://www.di.fc.ul.pt/~jpn/r/distributions/fitting.html
-
 binner <- function(var) {
   require(shiny)
+  library(MASS)
+  library(fitdistrplus)
+  set.seed(101)
   shinyApp(
-    ui = fluidPage(
+
+    # Define UI for random distribution app ----
+    ui <- fluidPage(
+
+      # App title ----
+      titlePanel("Tabsets"),
+
+      # Sidebar layout with input and output definitions ----
       sidebarLayout(
-        sidebarPanel(sliderInput("n", "Granularidad", 5, 100, 10)),
-        mainPanel(plotOutput("hist"))
+
+        # Sidebar panel for inputs ----
+        sidebarPanel(
+
+          # Input: Select the random distribution type ----
+          radioButtons("dist", "Distribution type:",
+                       c("Normal" = "norm",
+                         "Uniform" = "unif",
+                         "Log-normal" = "lnorm",
+                         "Exponential" = "exp")),
+
+          # br() element to introduce extra vertical spacing ----
+          br(),
+
+          # Input: Slider for the number of observations to generate ----
+          sliderInput("n",
+                      "Number of observations:",
+                      value = 500,
+                      min = 1,
+                      max = 1000)
+
+        ),
+
+        # Main panel for displaying outputs ----
+        mainPanel(
+
+          # Output: Tabset w/ plot, summary, and table ----
+          tabsetPanel(type = "tabs",
+                      tabPanel("Plot", plotOutput("plot")),
+                      tabPanel("Summary", verbatimTextOutput("summary")),
+                      tabPanel("Table", tableOutput("table"))
+          )
+
+        )
       )
     ),
-    server = function(input, output) {
-      output$hist <- renderPlot({
 
+    # Define server logic for random distribution app ----
+    server <- function(input, output) {
 
-        hist(var, prob=TRUE, breaks = input$n,
-             col = "skyblue", border = "white")
-        #title(main="Numbers over the years")
-        #title(xlab="Year")
-        #title(ylab="Number of people")
-        d <- density(var)
-        lines(d, col = 'red', lwd = 2)
+      # Reactive expression to generate the requested distribution ----
+      # This is called whenever the inputs change. The output functions
+      # defined below then use the value computed from this expression
+      d <- reactive({
+        dist <- switch(input$dist,
+                       norm = rnorm,
+                       unif = runif,
+                       lnorm = rlnorm,
+                       exp = rexp,
+                       rnorm)
+
+        dist(input$n)
       })
+
+      # Generate a plot of the data ----
+      # Also uses the inputs to build the plot label. Note that the
+      # dependencies on the inputs and the data reactive expression are
+      # both tracked, and all expressions are called in the sequence
+      # implied by the dependency graph.
+      output$plot <- renderPlot({
+        dist <- input$dist
+        n <- input$n
+
+
+        hist(d(), prob=TRUE,
+             main = paste("r", dist, "(", n, ")", sep = ""),
+             col = "#75AADB", border = "white", ylab = "Probabilidad")
+
+
+
+
+        den <- density(d())
+        lines(den, col = 'red', lwd = 2)
+
+        AjustmentTypes<-c("Aproximación empirica","Distribución teorica")
+        if(dist=='norm'){
+          fit <- fitdistr(d(), densfun="normal")
+          #hist(d(), pch=20, breaks=25, prob=TRUE, main="")
+          curve(dnorm(x, fit$estimate[1], fit$estimate[2]), col="green", lwd=2, add=T)
+          #print("Normal")
+
+          AjustmentTypes<-c("Aproximación empirica","Distribución teorica Normal")
+        }
+
+        if(dist=='lnorm'){
+          #fit <- fitdistr(d(), "lnorm")
+          fit <- fitdist(d(), "lnorm")
+          curve(dlnorm(x, fit$estimate[1], fit$estimate[2]), col="green", lwd=2, add=T)
+          #AjustmentTypes<-c("Aproximación empirica","Distribución teorica LNormal")
+        }
+
+        #legend("topright", col=c('red', 'green'), legend=nombres, bty="o")
+        legend("topright", legend=AjustmentTypes, fill=c('red', 'green'), col=c('red', 'green'),
+               bty="n")
+
+
+      })
+
+      # Generate a summary of the data ----
+      output$summary <- renderPrint({
+        summary(d())
+      })
+
+      # Generate an HTML table view of the data ----
+      output$table <- renderTable({
+        d()
+      })
+
     }
+
+    # Create Shiny app ----
+    #shinyApp(ui, server)
+
   )
 }
 
@@ -50,16 +134,3 @@ n<-1000
 x<-rnorm(n,0,1)
 hist(x,freq=TRUE)
 binner(x)
-
-
-
-
-#media
-#desviacion estandar
-#la función de densidad
-
-
-install.packages("rriskDistributions")
-library(rriskDistributions)
-res1<-fit.cont(data2fit=rnorm(374,40,1))
-res1
