@@ -153,7 +153,7 @@ hist(x,freq=TRUE)
 binner(x)
 #Lognormal
 binner(y)
-#Uniforme
-binner(z)
 #Exponencial
+binner(z)
+#Uniforme
 binner(w)
