@@ -1,20 +1,3 @@
-# Hello, world!
-#
-# This is an example function named 'hello' 
-# which prints 'Hello, world!'.
-#
-# You can learn more about package authoring with RStudio at:
-#
-#   http://r-pkgs.had.co.nz/
-#
-# Some useful keyboard shortcuts for package authoring:
-#
-#   Build and Reload Package:  'Ctrl + Shift + B'
-#   Check Package:             'Ctrl + Shift + E'
-#   Test Package:              'Ctrl + Shift + T'
-
-
-
 
 # https://stats.stackexchange.com/questions/76994/how-do-i-check-if-my-data-fits-an-exponential-distribution
 binner <- function(var) {
@@ -74,13 +57,11 @@ binner <- function(var) {
 
           # Output: Tabset w/ plot, summary, and table ----
           tabsetPanel(type = "tabs",
-                      tabPanel("Plot", plotOutput("plot"),br(),verbatimTextOutput("ensayo")),
+                      tabPanel("Plot", plotOutput("plot")),
                       tabPanel("Summary", verbatimTextOutput("summary")),
                       tabPanel("Table", tableOutput("table"))
 
           )
-
-
 
         )
       )
@@ -249,22 +230,6 @@ binner <- function(var) {
           muestra = scan(datos$datapath)
         }
         muestra
-      })
-
-      #Generacion Tabla
-      output$ensayo <- renderPrint({
-        datos <- input$file1
-        if (is.null(datos))
-          return(NULL)
-        if(input$header)
-        {
-          muestra = scan(datos$datapath,skip=1)
-        }
-        else{
-          muestra = scan(datos$datapath)
-        }
-        summary(muestra)
-
       })
 
     }
