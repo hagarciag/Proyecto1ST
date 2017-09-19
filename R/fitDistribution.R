@@ -18,10 +18,8 @@
 #https://github.com/jdvelasq/series-de-tiempo/blob/master/01-R-probabilidad.ipynb
 #http://janzilinsky.com/r-shiny-app-chart-tutorial-subsamples/
 #http://www.di.fc.ul.pt/~jpn/r/distributions/fitting.html
-# https://stats.stackexchange.com/questions/76994/how-do-i-check-if-my-data-fits-an-exponential-distribution
+#https://stats.stackexchange.com/questions/76994/how-do-i-check-if-my-data-fits-an-exponential-distribution
 
-
-# https://stats.stackexchange.com/questions/76994/how-do-i-check-if-my-data-fits-an-exponential-distribution
 binner <- function(var) {
   require(shiny)
   library(MASS)
@@ -159,6 +157,7 @@ binner <- function(var) {
         Distribucion <- c("Empirica")
         List_Fits <- list()
         AIC<- c(NA)
+        Kolmogorov_Smirnov<-c(NA)
 
         for (i in 1:length(input$dist)){
           if(dist[i]=='norm'){
@@ -171,6 +170,10 @@ binner <- function(var) {
             Distribucion <- c(Distribucion, "Normal")
             List_Fits[["fit_normal"]] <- fit_normal
             AIC <- c(AIC,AIC(fit_normal))
+
+            ks<-ks.test(muestra, "pnorm", fit_normal$estimate[1], fit_normal$estimate[2])
+            print(ks$p.value)
+            Kolmogorov_Smirnov<-c(Kolmogorov_Smirnov,ks$p.value)
             #print(fit_normal$estimate)
             #print(fit_normal$sd)
             #print(fit_normal$vcov)
@@ -189,6 +192,9 @@ binner <- function(var) {
             AIC <- c(AIC,fit_lnormal$aic)
             #print(fit_lnormal$aic)
             #print(fit_lnormal$bic)
+            ks<-ks.test(muestra, "plnorm", fit_lnormal$estimate[1], fit_lnormal$estimate[2])
+            print(ks$p.value)
+            Kolmogorov_Smirnov<-c(Kolmogorov_Smirnov,ks$p.value)
           }
 
           if(dist[i]=='unif'){
@@ -202,7 +208,11 @@ binner <- function(var) {
             Distribucion <- c(Distribucion, "Uniforme")
             List_Fits[["fit_unif"]] <- fit_unif
             AIC <- c(AIC,fit_unif$aic)
-            print(fit_unif$aic)
+            #print(fit_unif$aic)
+
+            ks<-ks.test(muestra, "punif", fit_unif$estimate[1], fit_unif$estimate[2])
+            print(ks$p.value)
+            Kolmogorov_Smirnov<-c(Kolmogorov_Smirnov,ks$p.value)
           }
 
           if(dist[i]=='chisq'){
@@ -215,6 +225,10 @@ binner <- function(var) {
             Distribucion <- c(Distribucion, "Chi-Cuadrado")
             List_Fits[["fit_chisq"]] <- fit_chisq
             AIC <- c(AIC,AIC(fit_chisq))
+
+            ks<-ks.test(muestra, "pchisq", chi_k)
+            print(ks$p.value)
+            Kolmogorov_Smirnov<-c(Kolmogorov_Smirnov,ks$p.value)
           }
 
           if(dist[i]=='logis'){
@@ -226,6 +240,10 @@ binner <- function(var) {
             Distribucion <- c(Distribucion, "Logistica")
             List_Fits[["fit_logist"]] <- fit_logist
             AIC <- c(AIC,AIC(fit_logist))
+
+            ks<-ks.test(muestra, "plogis", fit_logist$estimate[1], fit_logist$estimate[2])
+            print(ks$p.value)
+            Kolmogorov_Smirnov<-c(Kolmogorov_Smirnov,ks$p.value)
           }
 
           if(dist[i]=='cauchy'){
@@ -237,6 +255,10 @@ binner <- function(var) {
             Distribucion <- c(Distribucion, "Cauchy")
             List_Fits[["fit_cauchy"]] <- fit_cauchy
             AIC <- c(AIC,AIC(fit_cauchy))
+
+            ks<-ks.test(muestra, "pcauchy", fit_cauchy$estimate[1], fit_cauchy$estimate[2])
+            print(ks$p.value)
+            Kolmogorov_Smirnov<-c(Kolmogorov_Smirnov,ks$p.value)
           }
 
           if(dist[i]=='exp'){
@@ -253,6 +275,10 @@ binner <- function(var) {
             Distribucion <- c(Distribucion, "Exponencial")
             List_Fits[["fit_exp"]] <- fit_exp
             AIC <- c(AIC,AIC(fit_exp))
+
+            ks<-ks.test(muestra, "pexp", fit_exp$estimate)
+            print(ks$p.value)
+            Kolmogorov_Smirnov<-c(Kolmogorov_Smirnov,ks$p.value)
           }
         }
 
@@ -264,7 +290,7 @@ binner <- function(var) {
 
         #gofstat(List_Fits, fitnames = Distribucion)
 
-        estadisticos <- data.frame(Media, AIC)
+        estadisticos <- data.frame(Media, AIC, Kolmogorov_Smirnov)
         row.names(estadisticos) <- Distribucion
         output$estadisticos <- DT::renderDataTable(
           DT::datatable(estadisticos, options = list(searching = FALSE, paging = FALSE, bLengthChange = FALSE))
