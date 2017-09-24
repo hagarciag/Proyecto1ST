@@ -185,6 +185,9 @@ binner <- function(var) {
           datos <- input$file1
 
           if (is.null(datos))
+            return(var)
+
+          if (is.null(datos))
             return(NULL)
           if(input$header)
           {
@@ -962,3 +965,13 @@ binner <- function(var) {
 #binner(z)
 #Uniforme
 #binner(w)
+
+#T1<-200
+#ss<-rep(0,T1)
+#for(t1 in 1:T1){
+#  #y[t]<-cos(2*3.1416*((t/12)+runif(1,min=0,max=1)))
+#  ss[t1]<-cos(2*3.1416*((t1/12)+0.1*runif(1,min=0,max=1)))
+#}
+#plot(ss,type = 'l')
+#
+#binner(ss)
