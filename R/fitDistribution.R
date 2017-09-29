@@ -19,6 +19,7 @@
 #http://janzilinsky.com/r-shiny-app-chart-tutorial-subsamples/
 #http://www.di.fc.ul.pt/~jpn/r/distributions/fitting.html
 #https://stats.stackexchange.com/questions/76994/how-do-i-check-if-my-data-fits-an-exponential-distribution
+#https://gist.github.com/aagarw30/c593799bc7d8557dc863411bb552e4f4
 
 binner <- function(var) {
   require(shiny)
@@ -35,7 +36,7 @@ binner <- function(var) {
       theme = shinytheme("cerulean"),
 
       # App title ----
-      titlePanel("Temporal Series"),
+      titlePanel("Time Series"),
 
       # Sidebar layout with input and output definitions ----
       sidebarLayout(
@@ -51,22 +52,36 @@ binner <- function(var) {
 
           # Input: Select the random distribution type ----
           # checkboxGroupInput
-          radioButtons('t_suavizado', 'Métodos',
-                       c('Regresion Lineal Simple'=5,
-                         'Regresion Cuadratica'=6,
-                         'Regresion Cubica'=7),
-                       '5'),
+
+
+
+          conditionalPanel(
+            condition = "input.tabselected!=1",
+            radioButtons('t_suavizado', 'Métodos',
+                         c('Regresion Lineal Simple'=5,
+                           'Regresion Cuadratica'=6,
+                           'Regresion Cubica'=7),
+                         '5')
+
+          ),
+
+
+
+
 
           tags$hr(),
 
-          checkboxGroupInput("dist", "Distribution type:",
+          conditionalPanel(
+            condition = "input.tabselected==1",
+            checkboxGroupInput("dist", "Distribution type:",
                              c("Normal" = "norm",
                                "Uniform" = "unif",
                                "Log-normal" = "lnorm",
                                "Exponential" = "exp",
                                "Chi-Squared" = "chisq",
                                "Logistic" = "logis",
-                               "Cauchy" = "cauchy"), selected = "norm"),
+                               "Cauchy" = "cauchy"), selected = "norm")
+          ),
 
           # br() element to introduce extra vertical spacing ----
           br()
@@ -86,10 +101,11 @@ binner <- function(var) {
 
           # Output: Tabset w/ plot, summary, and table ----
           tabsetPanel(type = "tabs",
-                      tabPanel("Distribuciones", plotOutput("plot"),br(),DT::dataTableOutput('estadisticos'),br(),verbatimTextOutput("ensayo")),
-                      tabPanel("Grafico",plotOutput("plot1"),plotOutput("plot2")),
-                      tabPanel("Análisis series de tiempo", verbatimTextOutput("resumen")),
-                      tabPanel("Table", tableOutput("table"))
+                      tabPanel("Distribuciones", value=1, plotOutput("plot"),br(),DT::dataTableOutput('estadisticos'),br(),verbatimTextOutput("ensayo")),
+                      tabPanel("Grafico", value=2,plotOutput("plot1"),plotOutput("plot2")),
+                      tabPanel("Análisis series de tiempo", value=3, verbatimTextOutput("resumen")),
+                      tabPanel("Table", value=4, tableOutput("table")),
+                      id = "tabselected"
           )
 
 
@@ -183,6 +199,9 @@ binner <- function(var) {
 
         inFile <- reactive({
           datos <- input$file1
+
+          if (is.null(datos))
+            return(var)
 
           if (is.null(datos))
             return(NULL)
@@ -591,8 +610,10 @@ binner <- function(var) {
       # implied by the dependency graph.
       output$plot <- renderPlot({
         datos <- input$file1
+        muestra <-NULL
+
         if (is.null(datos))
-          muestra <- var
+          datos <- var
         else{
           if(input$header)
           {
@@ -601,6 +622,12 @@ binner <- function(var) {
           else{
             muestra = scan(datos$datapath)
           }
+        }
+
+        if (is.null(datos) && is.null(muestra))
+          return(NULL)
+        else if(is.null(muestra)){
+          muestra <- var
         }
 
         dist <- input$dist
@@ -920,23 +947,23 @@ binner <- function(var) {
 
 
         #Generacion Tabla
-        output$ensayo <- renderPrint({
-          datos <- input$file1
-          if (is.null(datos))
-            muestra <- var
-          else{
-            if(input$header)
-            {
-              muestra = scan(datos$datapath,skip=1)
-            }
-            else{
-              muestra = scan(datos$datapath)
-            }
-          }
-          #summary(muestra)
-          summary(muestra)
-
-        })
+        #output$ensayo <- renderPrint({
+        #  datos <- input$file1
+        #  if (is.null(datos))
+        #    muestra <- var
+        #  else{
+        #    if(input$header)
+        #    {
+        #      muestra = scan(datos$datapath,skip=1)
+        #    }
+        #    else{
+        #      muestra = scan(datos$datapath)
+        #    }
+        #  }
+        #  #summary(muestra)
+        #  summary(muestra)
+        #
+        #})
 
 
     }
@@ -962,3 +989,51 @@ binner <- function(var) {
 #binner(z)
 #Uniforme
 #binner(w)
+
+
+#Serie sintetica 1
+#T1<-200
+#ss<-rep(0,T1)
+#for(t1 in 1:T1){
+#  #y[t]<-cos(2*3.1416*((t/12)+runif(1,min=0,max=1)))
+#  ss[t1]<-cos(2*3.1416*((t1/12)+0.1*runif(1,min=0,max=1)))
+#}
+#plot(ss,type = 'l')
+
+
+#Serie sintetica 2
+#TT<-40
+#yy<-rep(0,TT)
+#for(tt in 1:TT){
+#  l1=0
+#  l2=0
+#  l3=0
+#  if((tt+3)%%4==0){
+#    l1=1
+#  }
+#  if((tt+2)%%4==0){
+#    l2=1
+#  }
+#  if((tt+1)%%4==0){
+#    l3=1
+#  }
+#  yy[tt]=10+(0.8*tt)+0.05*tt*tt + 15*l1 + 10.0*l2 + 3*l3 + rnorm(1)
+#}
+#plot(x=c(1:TT), y=yy,type = 'l')
+
+
+
+#Serie sintetica 3
+#T3<-100
+#y3<-rep(0,T3)
+#e3<-rep(0,T)
+#for(t3 in 1:100){
+#  e3[t3]=rnorm(1,mean = 0,sd = 1)
+#  y3[t3]=10+(0.7*t3)+e3[t3]
+#}
+#plot(y3,type = 'l')
+
+#binner(NULL)
+#binner(ss)
+#binner(yy)
+#binner(y3)
