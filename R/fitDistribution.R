@@ -103,7 +103,7 @@ binner <- function(var) {
           tabsetPanel(type = "tabs",
                       tabPanel("Distribuciones", value=1, plotOutput("plot"),br(),DT::dataTableOutput('estadisticos'),br(),verbatimTextOutput("ensayo")),
                       tabPanel("Grafico", value=2,plotOutput("plot1"),plotOutput("plot2")),
-                      tabPanel("Análisis series de tiempo", value=3, verbatimTextOutput("resumen")),
+                      tabPanel("Análisis series de tiempo", value=3, verbatimTextOutput("resumen"),br(),"AIC",verbatimTextOutput("resumen2")),
                       tabPanel("Table", value=4, tableOutput("table")),
                       id = "tabselected"
           )
@@ -308,6 +308,7 @@ binner <- function(var) {
             tt<- t*t
             rcuadratica <- lm(ts.data~t+tt)
             m.fit = ts(rcuadratica$fitted.values, freq=f, start=c(1,1))  # Valores ajustados del model
+            print(AIC(rcuadratica))
             plot.ts(ts.data,lwd=3,col='purple',type='o',main='Regresion Cuadratica')
             lines(m.fit,col='green',lwd=3)
             legend("topleft",c('Original','Regresión Cuadratica'), lwd=c(3,3,3),col = c('purple','green','blue'))
@@ -536,6 +537,7 @@ binner <- function(var) {
             tt<- t*t
             rcuadratica <- lm(ts.data~t+tt)
             summary(rcuadratica)
+            #output$resumen2 <- renderPrint({AIC(rcuadratica)})
           }
           else if (tipoR==7)
           {
@@ -808,7 +810,7 @@ binner <- function(var) {
 #       })
 
         #########Resumen y error############
-        output$resumen <- renderPrint({
+        output$resumen2 <- renderPrint({
 
           mydata=inFile()
           if (is.null(mydata))
@@ -850,14 +852,15 @@ binner <- function(var) {
           {
             t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
             rlineal <- lm(ts.data~t)
-            summary(rlineal)
+            AIC(rlineal)
           }
           else if (tipoR==6)
           {
             t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
             tt<- t*t
             rcuadratica <- lm(ts.data~t+tt)
-            summary(rcuadratica)
+            AIC(rcuadratica)
+            #output$resumen2 <- renderPrint({AIC(rcuadratica)})
           }
           else if (tipoR==7)
           {
@@ -865,7 +868,7 @@ binner <- function(var) {
             tt<- t*t
             ttt<-t*t*t
             rcubica <- lm(ts.data~t+tt+ttt)
-            summary(rcubica)
+            AIC(rcubica)
           }
           else if (tipoR==8)
           {
