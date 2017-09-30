@@ -60,8 +60,22 @@ binner <- function(var) {
             radioButtons('t_suavizado', 'Métodos',
                          c('Regresion Lineal Simple'=5,
                            'Regresion Cuadratica'=6,
-                           'Regresion Cubica'=7),
-                         '5')
+                           'Regresion Cubica'=7,
+                           ##'Regresion Multiple con Estacionalidad'=8,
+                           'Suavizado Exponencial Simple'=1,
+                           'Suavizado Exponencial Doble'=2,
+                           'Suavizado Exponencial Triple Aditiva'=3,
+                           'Suavizado Exponencial Triple Multiplicativas'=4
+                         ),
+                         '5'),
+            tags$hr(),
+            radioButtons('frecuencia_usuario', 'Frecuencia',
+                         c('Mensual'=12,
+                           'Trimestral'=4,'Cuatrimestral'=3,'Semestral'=2),
+                         '12'),
+            tags$hr(),
+            sliderInput("n", "Periodos:",
+                        min=0, max=12, value=12)
 
           ),
 
@@ -73,14 +87,14 @@ binner <- function(var) {
 
           conditionalPanel(
             condition = "input.tabselected==1",
-            checkboxGroupInput("dist", "Distribution type:",
-                             c("Normal" = "norm",
-                               "Uniform" = "unif",
-                               "Log-normal" = "lnorm",
-                               "Exponential" = "exp",
-                               "Chi-Squared" = "chisq",
-                               "Logistic" = "logis",
-                               "Cauchy" = "cauchy"), selected = "norm")
+            checkboxGroupInput("dist", "Tipo de Distribucion:",
+                               c("Normal" = "norm",
+                                 "Uniform" = "unif",
+                                 "Log-normal" = "lnorm",
+                                 "Exponential" = "exp",
+                                 "Chi-Squared" = "chisq",
+                                 "Logistic" = "logis",
+                                 "Cauchy" = "cauchy"), selected = "norm")
           ),
 
           # br() element to introduce extra vertical spacing ----
@@ -103,7 +117,8 @@ binner <- function(var) {
           tabsetPanel(type = "tabs",
                       tabPanel("Distribuciones", value=1, plotOutput("plot"),br(),DT::dataTableOutput('estadisticos'),br(),verbatimTextOutput("ensayo")),
                       tabPanel("Grafico", value=2,plotOutput("plot1"),plotOutput("plot2")),
-                      tabPanel("Análisis series de tiempo", value=3, verbatimTextOutput("resumen"),br(),"AIC",verbatimTextOutput("resumen2")),
+                      tabPanel("Análisis series de tiempo", value=3, verbatimTextOutput("resumen"),br(),"AIC",verbatimTextOutput("resumen3")),
+#                      tabPanel("Análisis series de tiempo", value=3, verbatimTextOutput("resumen"),br(),verbatimTextOutput("resumen2"),br(),"AIC",verbatimTextOutput("resumen3")),
                       tabPanel("Table", value=4, tableOutput("table")),
                       id = "tabselected"
           )
@@ -147,461 +162,449 @@ binner <- function(var) {
       })
 
       #####
-        fecha<- function(freq,pron,total){
-          n<-total-pron
-          anio<-0
-          periodo<-0
-          i<-0
-          while (n>0) {
-            i<-i+1;
-            for (j in seq(1:freq)) {
-              if(n<=0)
-              {
-                break();
-              }
-              anio<-i;
-              periodo<-j;
-              n<-n-1;
+      fecha<- function(freq,pron,total){
+        n<-total-pron
+        anio<-0
+        periodo<-0
+        i<-0
+        while (n>0) {
+          i<-i+1;
+          for (j in seq(1:freq)) {
+            if(n<=0)
+            {
+              break();
             }
+            anio<-i;
+            periodo<-j;
+            n<-n-1;
           }
-          return(c(anio,periodo))
         }
-        serieTiempo <- function(datos,frecuencia){
-          ##frecuencia<-as.numeric(input$frecuencia_usuario)
-          frecuencia<-12
-          ts.data<-ts(datos,start=1,frequency=frecuencia)
-          return(ts.data)
+        return(c(anio,periodo))
+      }
+      serieTiempo <- function(datos,frecuencia){
+        frecuencia<-as.numeric(input$frecuencia_usuario)
+        ts.data<-ts(datos,start=1,frequency=frecuencia)
+        return(ts.data)
+      }
+      aprendizaje <- function(datos,frecuencia,periodo){
+        totalDatos<-length(datos)
+        frecuencia<-as.numeric(input$frecuencia_usuario)
+        pronostico<- periodo
+        posicion<-fecha(frecuencia,pronostico,totalDatos)
+
+        ts.data<-ts(datos,start=1,frequency=frecuencia)
+        x.fit<-window(ts.data,start=1, end=posicion)
+
+        return(x.fit)
+      }
+      pronostico <- function(datos,frecuencia,periodo){
+        totalDatos<-length(datos)
+        frecuencia<-as.numeric(input$frecuencia_usuario)
+        pronostico<- periodo
+        ts.data<-ts(datos,start=1,frequency=frecuencia)
+        posicion<-fecha(frecuencia,pronostico-1,totalDatos)
+        x.for<-window(ts.data,start=posicion)
+
+        return(x.for)
+      }
+
+
+      inFile <- reactive({
+        datos <- input$file1
+
+        if (is.null(datos))
+          return(var)
+
+        if (is.null(datos))
+          return(NULL)
+        if(input$header)
+        {
+          aux = scan(datos$datapath,skip=1)
         }
-        aprendizaje <- function(datos,frecuencia,periodo){
-          totalDatos<-length(datos)
-          ##frecuencia<-as.numeric(input$frecuencia_usuario)
-          frecuencia<-12
-          pronostico<- periodo
-          posicion<-fecha(frecuencia,pronostico,totalDatos)
-
-          ts.data<-ts(datos,start=1,frequency=frecuencia)
-          x.fit<-window(ts.data,start=1, end=posicion)
-
-          return(x.fit)
-        }
-        pronostico <- function(datos,frecuencia,periodo){
-          totalDatos<-length(datos)
-          ##frecuencia<-as.numeric(input$frecuencia_usuario)
-          frecuencia<-12
-          pronostico<- periodo
-          ts.data<-ts(datos,start=1,frequency=frecuencia)
-          posicion<-fecha(frecuencia,pronostico-1,totalDatos)
-          x.for<-window(ts.data,start=posicion)
-
-          return(x.for)
+        else{
+          aux = scan(datos$datapath)
         }
 
 
-        inFile <- reactive({
-          datos <- input$file1
-
-          if (is.null(datos))
-            return(var)
-
-          if (is.null(datos))
-            return(NULL)
-          if(input$header)
-          {
-            aux = scan(datos$datapath,skip=1)
-          }
-          else{
-            aux = scan(datos$datapath)
-          }
-
-
-        })
-
-
-        output$histograma <- renderPlot({
-
-          datos <- input$file1
-          if (is.null(datos))
-            return(NULL)
-          if(input$header)
-          {
-            muestra = scan(datos$datapath,skip=1)
-          }
-          else{
-            muestra = scan(datos$datapath)
-          }
-          ##hist(muestra)
-          hist(muestra, prob=TRUE, main = paste("Ajuste de Funciones"),
-               col = "#75AADB", border = "white", ylab = "Probabilidad", xlab = "Serie")
-        })
-
-        output$plot1 <- renderPlot({
-
-
-          mydata=inFile()
-          if (is.null(mydata))
-            return(NULL)
-          tipoR <- as.numeric(input$t_suavizado)
-          ##f <- as.numeric(input$frecuencia_usuario)
-          f <- 12
-          ##p <- as.numeric(input$n)
-          p <- 12
-          ts.data<-serieTiempo(mydata,f)
-          x.fit<-aprendizaje(mydata,f,p)
-          x.for<-pronostico(mydata,f,p)
-          if(tipoR==1)
-          {
-            msimple<-HoltWinters(x=x.fit,alpha = NULL, beta = FALSE, gamma = FALSE)
-            psimple<-predict(msimple,n.ahead=p)
-            plot.ts(ts.data,lwd=3,col='black',type='o',main='Suavizado Simple (funcion predict)')
-            lines(msimple$fitted[,1],col='orange',lwd=3)
-            lines(psimple[,1],col='blue',lwd=3)
-            legend("topleft",c('Original','Suavizado simple','Pronostico simple'), lwd=c(3,3,3),col = c('black','orange','blue'))
-
-          }
-
-          else if(tipoR==2)
-          {
-
-
-            mdouble<-HoltWinters(x=x.fit,alpha = NULL, beta = NULL, gamma = FALSE)
-            pdouble<-predict(mdouble,n.ahead=p)
-            plot.ts(ts.data,lwd=3,col='black',type='o',main='Suavizado Doble (funcion predict)')
-            lines(mdouble$fitted[,1],col='orange',lwd=3)
-            lines(pdouble[,1],col='blue',lwd=3)
-            legend("topleft",c('Original','Suavizado doble','Pronostico doble'), lwd=c(3,3,3),col = c('black','orange','blue'))
-
-          }
-          else if(tipoR==3)
-          {
-            mtripleAdd<-HoltWinters(x=x.fit,seasonal = "additive")
-            ptripleAdd<-predict(mtripleAdd,n.ahead=p)
-            plot.ts(ts.data,lwd=3,col='black',type='o',main='Suavizado Triple Componente Aditiva (funcion predict)')
-            lines(mtripleAdd$fitted[,1],col='orange',lwd=3)
-            lines(ptripleAdd[,1],col='blue',lwd=3)
-            legend("topleft",c('Original','Suavizado triple aditiva','Pronostico triple aditiva'), lwd=c(3,3,3),col = c('black','orange','blue'))
-
-          }
-          else if (tipoR==4)
-          {
-
-            mtripleMult<-HoltWinters(x=x.fit,seasonal = "multiplicative")
-            ptripleMult<-predict(mtripleMult,n.ahead=p)
-            plot.ts(ts.data,lwd=3,col='black',type='o',main='Suavizado Triple Componente Multiplicativa (funcion predict)')
-            lines(mtripleMult$fitted[,1],col='orange',lwd=3)
-            lines(ptripleMult[,1],col='blue',lwd=3)
-            legend("topleft",c('Original','Suavizado triple multiplicativa','Pronostico triple multiplicativa'), lwd=c(3,3,3),col = c('black','orange','blue'))
-
-          }
-          else if (tipoR==5)
-          {
-            t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
-            rlineal <- lm(ts.data~t)
-            m.fit = ts(rlineal$fitted.values, freq=f, start=c(1,1))  # Valores ajustados del model
-            plot.ts(ts.data,lwd=3,col='#75AADB',type='o',main='Regresion Lineal Simple')
-            lines(m.fit,col='green',lwd=3)
-            legend("topleft",c('Original','Regresión Lineal Simple'), lwd=c(3,3,3),col = c('#75AADB','green','blue'))
-
-          }
-          else if (tipoR==6)
-          {
-            t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
-            tt<- t*t
-            rcuadratica <- lm(ts.data~t+tt)
-            m.fit = ts(rcuadratica$fitted.values, freq=f, start=c(1,1))  # Valores ajustados del model
-            print(AIC(rcuadratica))
-            plot.ts(ts.data,lwd=3,col='purple',type='o',main='Regresion Cuadratica')
-            lines(m.fit,col='green',lwd=3)
-            legend("topleft",c('Original','Regresión Cuadratica'), lwd=c(3,3,3),col = c('purple','green','blue'))
-
-          }
-          else if (tipoR==7)
-          {
-            t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
-            tt<- t*t
-            ttt<-t*t*t
-            rcubica <- lm(ts.data~t+tt+ttt)
-            m.fit = ts(rcubica$fitted.values, freq=f, start=c(1,1))  # Valores ajustados del model
-            plot.ts(ts.data,lwd=3,col='#75AADB',type='o',main='Regresion Cubica')
-            lines(m.fit,col='green',lwd=3)
-            legend("topleft",c('Original','Regresión Cubica'), lwd=c(3,3,3),col = c('#75AADB','green','blue'))
-
-          }
-          else if (tipoR==8)
-          {
-            T=length(ts.data)           # Variable independiente t: Tiempo
-            t=seq(1:(T-p))
-            It=seasonaldummy(x.fit)
-            restacional = lm(x.fit ~ t + It)
-            m.fit = ts(restacional$fitted.values, freq=f, start=c(1,1))  # Valores ajustados del modelo
-            plot.ts(ts.data,lwd=3,col='black',type='o',main='Regresion Multiple con Estacionalidad')
-            lines(m.fit,col='orange',lwd=3)
-
-
-          }
-
-        })
-
-        output$plot2 <- renderPlot({
-
-
-          mydata=inFile()
-          if (is.null(mydata))
-            return(NULL)
-          tipoR <- as.numeric(input$t_suavizado)
-          ##f <- as.numeric(input$frecuencia_usuario)
-          f <- 12
-          ##p <- as.numeric(input$n)
-          p <- 12
-          ts.data<-serieTiempo(mydata,f)
-          x.fit<-aprendizaje(mydata,f,p)
-          x.for<-pronostico(mydata,f,p)
-          if(tipoR==1)
-          {
-            msimple<-HoltWinters(x=x.fit,alpha = NULL, beta = FALSE, gamma = FALSE)
-            psimple<-forecast.HoltWinters(msimple,h=p)
-            plot.forecast(psimple,lwd=3,col='black',type='o')
-
-          }
-
-          else if(tipoR==2)
-          {
-
-
-            mdouble<-HoltWinters(x=x.fit,alpha = NULL, beta = NULL, gamma = FALSE)
-            pdouble<-forecast.HoltWinters(mdouble,h=p)
-            plot.forecast(pdouble,lwd=3,col='black',type='o')
-
-          }
-          else if(tipoR==3)
-          {
-            mtripleAdd<-HoltWinters(x=x.fit,seasonal = "additive")
-            ptripleAdd<-forecast.HoltWinters(mtripleAdd,h=p)
-            plot.forecast(ptripleAdd,lwd=3,col='black',type='o')
-          }
-          else if (tipoR==4)
-          {
-
-            mtripleMult<-HoltWinters(x=x.fit,seasonal = "multiplicative")
-            ptripleMult<-predict(mtripleMult,n.ahead=p)
-            ptripleMult<-forecast.HoltWinters(mtripleMult,h=p)
-            plot.forecast(ptripleMult,lwd=3,col='black',type='o')
-
-          }
-          else if (tipoR==5)
-          {
-            t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
-            rlineal <- lm(ts.data~t)
-            par(mfrow=c(2,2))
-            options(repr.plot.width=10, repr.plot.height=6)
-            residual<-rlineal$residuals
-            plot(t,residual,
-                 type='l',
-                 ylab='',main="Residuales Modelo Lineal",
-                 col="#75AADB",lwd=3)
-
-            abline(h=0,lty=2)        # Linea para la media
-
-            plot(density(residual),        # Gráfica de densidad
-                 xlab='x',
-                 main= 'Densidad Residuales Modelo Lineal',
-                 col="#75AADB",lwd=3)
-
-            qqnorm(residual)               # Gráfica qqnorm para probar normalidad
-            qqline(residual,col='#75AADB',lwd=3)         # Linea
-
-            acf(residual, ci.type="ma",60) # Prueba ACF
-          }
-          else if (tipoR==6)
-          {
-            t<- seq(1:length(ts.data))  # Variable independiente t: Tiempo
-            tt<-t*t
-            rcuadratica <- lm(ts.data~t+tt)
-            par(mfrow=c(2,2))
-            options(repr.plot.width=10, repr.plot.height=6)
-            residual<-rcuadratica$residuals
-            plot(t,residual,
-                 type='l',
-                 ylab='',main="Residuales Modelo Cuadrático",
-                 col="purple",lwd=3)
-
-            abline(h=0,lty=2)        # Linea para la media
-
-            plot(density(residual),        # Gráfica de densidad
-                 xlab='x',
-                 main= 'Densidad Residuales Modelo Cuadrático',
-                 col="purple",lwd=3)
-
-            qqnorm(residual)               # Gráfica qqnorm para probar normalidad
-            qqline(residual,col='purple',lwd=3)         # Linea
-
-            acf(residual, ci.type="ma",60) # Prueba ACF
-          }
-          else if (tipoR==7)
-          {
-            t<- seq(1:length(ts.data))  # Variable independiente t: Tiempo
-            tt<-t*t
-            ttt<-t*t*t
-            rcubica <- lm(ts.data~t+tt+ttt)
-            par(mfrow=c(2,2))
-            options(repr.plot.width=10, repr.plot.height=6)
-            residual<-rcubica$residuals
-            plot(t,residual,
-                 type='l',
-                 ylab='',main="Residuales Modelo Cubico",
-                 col="#75AADB",lwd=3)
-
-            abline(h=0,lty=2)        # Linea para la media
-
-            plot(density(residual),        # Gráfica de densidad
-                 xlab='x',
-                 main= 'Densidad Residuales Modelo Cubico',
-                 col="#75AADB",lwd=3)
-
-            qqnorm(residual)               # Gráfica qqnorm para probar normalidad
-            qqline(residual,col='#75AADB',lwd=3)         # Linea
-
-            acf(residual, ci.type="ma",60) # Prueba ACF
-          }
-          else if (tipoR==8)
-          {
-
-            T = length(x.fit)
-            t=seq(1:T)
-            It=seasonaldummy(x.fit)
-            restacional = lm(x.fit ~ t + It)
-            Itf = seasonaldummyf(x.fit,p)
-            tf = seq(T+1,T+p,1)
-            ## Predicción
-            pestacional = predict(restacional,data.frame(t = tf,It=I(Itf)))
-            posicion<-fecha(f,p-1,length(mydata))
-            pestacional<-ts(pestacional,freq=f,start=posicion)
-            options(repr.plot.width=10, repr.plot.height=6)
-
-            plot.ts( ts.data,
-                     type = 'o',
-                     lwd=3,main='Prediccion Regresion Multiple con Estacionalidad')
-
-            lines(pestacional,col='blue',lwd=3)
-          }
-        })
-
-
-
-        output$resumen <- renderPrint({
-
-          mydata=inFile()
-          if (is.null(mydata))
-            return(NULL)
-          tipoR <- as.numeric(input$t_suavizado)
-          ##f <- as.numeric(input$frecuencia_usuario)
-          f <- 12
-          ##p <- as.numeric(input$n)
-          p <- 12
-          ts.data<-serieTiempo(mydata,f)
-          x.fit<-aprendizaje(mydata,f,p)
-          x.for<-pronostico(mydata,f,p)
-          if(tipoR==1)
-          {
-            msimple<-HoltWinters(x=x.fit,alpha = NULL, beta = FALSE, gamma = FALSE)
-            msimple
-
-          }
-
-          else if(tipoR==2)
-          {
-
-            mdouble<-HoltWinters(x=x.fit,alpha = NULL, beta = NULL, gamma = FALSE)
-            mdouble
-          }
-          else if(tipoR==3)
-          {
-            mtripleAdd<-HoltWinters(x=x.fit,seasonal = "additive")
-            mtripleAdd
-          }
-          else if(tipoR==4)
-          {
-
-            mtripleMult<-HoltWinters(x=x.fit,seasonal = "multiplicative")
-            mtripleMult
-
-          }
-          else if (tipoR==5)
-          {
-            t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
-            rlineal <- lm(ts.data~t)
-            summary(rlineal)
-          }
-          else if (tipoR==6)
-          {
-            t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
-            tt<- t*t
-            rcuadratica <- lm(ts.data~t+tt)
-            summary(rcuadratica)
-            #output$resumen2 <- renderPrint({AIC(rcuadratica)})
-          }
-          else if (tipoR==7)
-          {
-            t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
-            tt<- t*t
-            ttt<-t*t*t
-            rcubica <- lm(ts.data~t+tt+ttt)
-            summary(rcubica)
-          }
-          else if (tipoR==8)
-          {
-            T=length(ts.data)           # Variable independiente t: Tiempo
-            t=seq(1:(T-p))
-            It=seasonaldummy(x.fit)
-            restacional = lm(x.fit ~ t + It)
-            summary(restacional)
-          }
-
-        })
-
-        output$error <- renderPrint({
-
-          mydata=inFile()
-          if (is.null(mydata))
-            return(NULL)
-          tipoR <- as.numeric(input$t_suavizado)
-          ##f <- as.numeric(input$frecuencia_usuario)
-          f <- 12
-          ##p <- as.numeric(input$n)
-          p <- 12
-          ts.data<-serieTiempo(mydata,f)
-          x.fit<-aprendizaje(mydata,f,p)
-          x.for<-pronostico(mydata,f,p)
-          if(tipoR==1)
-          {
-            msimple<-HoltWinters(x=x.fit,alpha = NULL, beta = FALSE, gamma = FALSE)
-            paste("Error:",msimple$SSE)
-
-          }
-
-          else if(tipoR==2)
-          {
-
-            mdouble<-HoltWinters(x=x.fit,alpha = NULL, beta = NULL, gamma = FALSE)
-            paste("Error:",mdouble$SSE)
-          }
-          else if(tipoR==3)
-          {
-            mtripleAdd<-HoltWinters(x=x.fit,seasonal = "additive")
-            paste("Error:",mtripleAdd$SSE)
-          }
-          else if(tipoR==4)
-          {
-
-            mtripleMult<-HoltWinters(x=x.fit,seasonal = "multiplicative")
-            paste("Error:",mtripleMult$SSE)
-
-          }
-          else
-          {
-            NULL
-          }
-
-        })
+      })
+
+
+      output$histograma <- renderPlot({
+
+        datos <- input$file1
+        if (is.null(datos))
+          return(NULL)
+        if(input$header)
+        {
+          muestra = scan(datos$datapath,skip=1)
+        }
+        else{
+          muestra = scan(datos$datapath)
+        }
+        ##hist(muestra)
+        hist(muestra, prob=TRUE, main = paste("Ajuste de Funciones"),
+             col = "#75AADB", border = "white", ylab = "Probabilidad", xlab = "Serie")
+      })
+
+      output$plot1 <- renderPlot({
+
+
+        mydata=inFile()
+        if (is.null(mydata))
+          return(NULL)
+        tipoR <- as.numeric(input$t_suavizado)
+        f <- as.numeric(input$frecuencia_usuario)
+        p <- as.numeric(input$n)
+        ts.data<-serieTiempo(mydata,f)
+        x.fit<-aprendizaje(mydata,f,p)
+        x.for<-pronostico(mydata,f,p)
+        if(tipoR==1)
+        {
+          msimple<-HoltWinters(x=x.fit,alpha = NULL, beta = FALSE, gamma = FALSE)
+          psimple<-predict(msimple,n.ahead=p)
+          plot.ts(ts.data,lwd=3,col='black',type='o',main='Suavizado Simple (funcion predict)')
+          lines(msimple$fitted[,1],col='orange',lwd=3)
+          lines(psimple[,1],col='blue',lwd=3)
+          legend("topleft",c('Original','Suavizado simple','Pronostico simple'), lwd=c(3,3,3),col = c('black','orange','blue'))
+
+        }
+
+        else if(tipoR==2)
+        {
+
+
+          mdouble<-HoltWinters(x=x.fit,alpha = NULL, beta = NULL, gamma = FALSE)
+          pdouble<-predict(mdouble,n.ahead=p)
+          plot.ts(ts.data,lwd=3,col='black',type='o',main='Suavizado Doble (funcion predict)')
+          lines(mdouble$fitted[,1],col='orange',lwd=3)
+          lines(pdouble[,1],col='blue',lwd=3)
+          legend("topleft",c('Original','Suavizado doble','Pronostico doble'), lwd=c(3,3,3),col = c('black','orange','blue'))
+
+        }
+        else if(tipoR==3)
+        {
+          mtripleAdd<-HoltWinters(x=x.fit,seasonal = "additive")
+          ptripleAdd<-predict(mtripleAdd,n.ahead=p)
+          plot.ts(ts.data,lwd=3,col='black',type='o',main='Suavizado Triple Componente Aditiva (funcion predict)')
+          lines(mtripleAdd$fitted[,1],col='orange',lwd=3)
+          lines(ptripleAdd[,1],col='blue',lwd=3)
+          legend("topleft",c('Original','Suavizado triple aditiva','Pronostico triple aditiva'), lwd=c(3,3,3),col = c('black','orange','blue'))
+
+        }
+        else if (tipoR==4)
+        {
+
+          mtripleMult<-HoltWinters(x=x.fit,seasonal = "multiplicative")
+          ptripleMult<-predict(mtripleMult,n.ahead=p)
+          plot.ts(ts.data,lwd=3,col='black',type='o',main='Suavizado Triple Componente Multiplicativa (funcion predict)')
+          lines(mtripleMult$fitted[,1],col='orange',lwd=3)
+          lines(ptripleMult[,1],col='blue',lwd=3)
+          legend("topleft",c('Original','Suavizado triple multiplicativa','Pronostico triple multiplicativa'), lwd=c(3,3,3),col = c('black','orange','blue'))
+
+        }
+        else if (tipoR==5)
+        {
+          t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
+          rlineal <- lm(ts.data~t)
+          m.fit = ts(rlineal$fitted.values, freq=f, start=c(1,1))  # Valores ajustados del model
+          plot.ts(ts.data,lwd=3,col='black',type='o',main='Regresion Lineal Simple')
+          lines(m.fit,col='orange',lwd=3)
+          legend("topleft",c('Original','Regresión Lineal Simple'), lwd=c(3,3,3),col = c('black','orange','blue'))
+
+        }
+        else if (tipoR==6)
+        {
+          t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
+          tt<- t*t
+          rcuadratica <- lm(ts.data~t+tt)
+          m.fit = ts(rcuadratica$fitted.values, freq=f, start=c(1,1))  # Valores ajustados del model
+          plot.ts(ts.data,lwd=3,col='black',type='o',main='Regresion Cuadratica')
+          lines(m.fit,col='orange',lwd=3)
+          legend("topleft",c('Original','Regresión Cuadratica'), lwd=c(3,3,3),col = c('black','orange','blue'))
+
+        }
+        else if (tipoR==7)
+        {
+          t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
+          tt<- t*t
+          ttt<-t*t*t
+          rcubica <- lm(ts.data~t+tt+ttt)
+          m.fit = ts(rcubica$fitted.values, freq=f, start=c(1,1))  # Valores ajustados del model
+          plot.ts(ts.data,lwd=3,col='black',type='o',main='Regresion Cubica')
+          lines(m.fit,col='orange',lwd=3)
+          legend("topleft",c('Original','Regresión Cubica'), lwd=c(3,3,3),col = c('black','orange','blue'))
+
+        }
+        else if (tipoR==8)
+        {
+          T=length(ts.data)           # Variable independiente t: Tiempo
+          t=seq(1:(T-p))
+          It=seasonaldummy(x.fit)
+          restacional = lm(x.fit ~ t + It)
+          m.fit = ts(restacional$fitted.values, freq=f, start=c(1,1))  # Valores ajustados del modelo
+          plot.ts(ts.data,lwd=3,col='black',type='o',main='Regresion Multiple con Estacionalidad')
+          lines(m.fit,col='orange',lwd=3)
+
+
+        }
+
+      })
+
+      output$plot2 <- renderPlot({
+
+
+        mydata=inFile()
+        if (is.null(mydata))
+          return(NULL)
+        tipoR <- as.numeric(input$t_suavizado)
+        f <- as.numeric(input$frecuencia_usuario)
+        p <- as.numeric(input$n)
+        ts.data<-serieTiempo(mydata,f)
+        x.fit<-aprendizaje(mydata,f,p)
+        x.for<-pronostico(mydata,f,p)
+        if(tipoR==1)
+        {
+          msimple<-HoltWinters(x=x.fit,alpha = NULL, beta = FALSE, gamma = FALSE)
+          psimple<-forecast:::forecast.HoltWinters(msimple,h=p)
+          forecast:::plot.forecast(psimple,lwd=3,col='black',type='o')
+
+        }
+
+        else if(tipoR==2)
+        {
+
+
+          mdouble<-HoltWinters(x=x.fit,alpha = NULL, beta = NULL, gamma = FALSE)
+          pdouble<-forecast:::forecast.HoltWinters(mdouble,h=p)
+          forecast:::plot.forecast(pdouble,lwd=3,col='black',type='o')
+
+        }
+        else if(tipoR==3)
+        {
+          mtripleAdd<-HoltWinters(x=x.fit,seasonal = "additive")
+          ptripleAdd<-forecast:::forecast.HoltWinters(mtripleAdd,h=p)
+          forecast:::plot.forecast(ptripleAdd,lwd=3,col='black',type='o')
+        }
+        else if (tipoR==4)
+        {
+
+          mtripleMult<-HoltWinters(x=x.fit,seasonal = "multiplicative")
+          ptripleMult<-predict(mtripleMult,n.ahead=p)
+          ptripleMult<-forecast:::forecast.HoltWinters(mtripleMult,h=p)
+          forecast:::plot.forecast(ptripleMult,lwd=3,col='black',type='o')
+
+        }
+        else if (tipoR==5)
+        {
+          t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
+          rlineal <- lm(ts.data~t)
+          par(mfrow=c(2,2))
+          options(repr.plot.width=10, repr.plot.height=6)
+          residual<-rlineal$residuals
+          plot(t,residual,
+               type='h',
+               ylab='',main="Residuales Modelo Lineal",
+               col="#75AADB",lwd=3)
+
+          abline(h=0,lty=2)        # Linea para la media
+
+          plot(density(residual),        # Gráfica de densidad
+               xlab='x',
+               main= 'Densidad Residuales Modelo Lineal',
+               col="#75AADB",lwd=3)
+
+          qqnorm(residual)               # Gráfica qqnorm para probar normalidad
+          qqline(residual,col='#75AADB',lwd=3)         # Linea
+
+          acf(residual, ci.type="ma",60) # Prueba ACF
+        }
+        else if (tipoR==6)
+        {
+          t<- seq(1:length(ts.data))  # Variable independiente t: Tiempo
+          tt<-t*t
+          rcuadratica <- lm(ts.data~t+tt)
+          par(mfrow=c(2,2))
+          options(repr.plot.width=10, repr.plot.height=6)
+          residual<-rcuadratica$residuals
+          plot(t,residual,
+               type='h',
+               ylab='',main="Residuales Modelo Cuadrático",
+               col="purple",lwd=3)
+
+          abline(h=0,lty=2)        # Linea para la media
+
+          plot(density(residual),        # Gráfica de densidad
+               xlab='x',
+               main= 'Densidad Residuales Modelo Cuadrático',
+               col="purple",lwd=3)
+
+          qqnorm(residual)               # Gráfica qqnorm para probar normalidad
+          qqline(residual,col='purple',lwd=3)         # Linea
+
+          acf(residual, ci.type="ma",60) # Prueba ACF
+        }
+        else if (tipoR==7)
+        {
+          t<- seq(1:length(ts.data))  # Variable independiente t: Tiempo
+          tt<-t*t
+          ttt<-t*t*t
+          rcubica <- lm(ts.data~t+tt+ttt)
+          par(mfrow=c(2,2))
+          options(repr.plot.width=10, repr.plot.height=6)
+          residual<-rcubica$residuals
+          plot(t,residual,
+               type='h',
+               ylab='',main="Residuales Modelo Cubico",
+               col="#75AADB",lwd=3)
+
+          abline(h=0,lty=2)        # Linea para la media
+
+          plot(density(residual),        # Gráfica de densidad
+               xlab='x',
+               main= 'Densidad Residuales Modelo Cubico',
+               col="#75AADB",lwd=3)
+
+          qqnorm(residual)               # Gráfica qqnorm para probar normalidad
+          qqline(residual,col='#75AADB',lwd=3)         # Linea
+
+          acf(residual, ci.type="ma",60) # Prueba ACF
+        }
+        else if (tipoR==8)
+        {
+
+          T = length(x.fit)
+          t=seq(1:T)
+          It=seasonaldummy(x.fit)
+          restacional = lm(x.fit ~ t + It)
+          Itf = seasonaldummyf(x.fit,p)
+          tf = seq(T+1,T+p,1)
+          ## Predicción
+          pestacional = predict(restacional,data.frame(t = tf,It=I(Itf)))
+          posicion<-fecha(f,p-1,length(mydata))
+          pestacional<-ts(pestacional,freq=f,start=posicion)
+          options(repr.plot.width=10, repr.plot.height=6)
+
+          plot.ts( ts.data,
+                   type = 'o',
+                   lwd=3,main='Prediccion Regresion Multiple con Estacionalidad')
+
+          lines(pestacional,col='blue',lwd=3)
+        }
+      })
+
+
+
+      output$resumen <- renderPrint({
+
+        mydata=inFile()
+        if (is.null(mydata))
+          return(NULL)
+        tipoR <- as.numeric(input$t_suavizado)
+        f <- as.numeric(input$frecuencia_usuario)
+        p <- as.numeric(input$n)
+        ts.data<-serieTiempo(mydata,f)
+        x.fit<-aprendizaje(mydata,f,p)
+        x.for<-pronostico(mydata,f,p)
+        if(tipoR==1)
+        {
+          msimple<-HoltWinters(x=x.fit,alpha = NULL, beta = FALSE, gamma = FALSE)
+          msimple
+
+        }
+
+        else if(tipoR==2)
+        {
+
+          mdouble<-HoltWinters(x=x.fit,alpha = NULL, beta = NULL, gamma = FALSE)
+          mdouble
+        }
+        else if(tipoR==3)
+        {
+          mtripleAdd<-HoltWinters(x=x.fit,seasonal = "additive")
+          mtripleAdd
+        }
+        else if(tipoR==4)
+        {
+
+          mtripleMult<-HoltWinters(x=x.fit,seasonal = "multiplicative")
+          mtripleMult
+
+        }
+        else if (tipoR==5)
+        {
+          t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
+          rlineal <- lm(ts.data~t)
+          summary(rlineal)
+        }
+        else if (tipoR==6)
+        {
+          t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
+          tt<- t*t
+          rcuadratica <- lm(ts.data~t+tt)
+          summary(rcuadratica)
+          #output$resumen2 <- renderPrint({AIC(rcuadratica)})
+        }
+        else if (tipoR==7)
+        {
+          t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
+          tt<- t*t
+          ttt<-t*t*t
+          rcubica <- lm(ts.data~t+tt+ttt)
+          summary(rcubica)
+        }
+        else if (tipoR==8)
+        {
+          T=length(ts.data)           # Variable independiente t: Tiempo
+          t=seq(1:(T-p))
+          It=seasonaldummy(x.fit)
+          restacional = lm(x.fit ~ t + It)
+          summary(restacional)
+        }
+
+      })
+
+      output$error <- renderPrint({
+
+        mydata=inFile()
+        if (is.null(mydata))
+          return(NULL)
+        tipoR <- as.numeric(input$t_suavizado)
+        f <- as.numeric(input$frecuencia_usuario)
+        p <- as.numeric(input$n)
+        ts.data<-serieTiempo(mydata,f)
+        x.fit<-aprendizaje(mydata,f,p)
+        x.for<-pronostico(mydata,f,p)
+        if(tipoR==1)
+        {
+          msimple<-HoltWinters(x=x.fit,alpha = NULL, beta = FALSE, gamma = FALSE)
+          paste("Error:",msimple$SSE)
+
+        }
+
+        else if(tipoR==2)
+        {
+
+          mdouble<-HoltWinters(x=x.fit,alpha = NULL, beta = NULL, gamma = FALSE)
+          paste("Error:",mdouble$SSE)
+        }
+        else if(tipoR==3)
+        {
+          mtripleAdd<-HoltWinters(x=x.fit,seasonal = "additive")
+          paste("Error:",mtripleAdd$SSE)
+        }
+        else if(tipoR==4)
+        {
+
+          mtripleMult<-HoltWinters(x=x.fit,seasonal = "multiplicative")
+          paste("Error:",mtripleMult$SSE)
+
+        }
+        else
+        {
+          NULL
+        }
+
+      })
       ####
 
 
@@ -793,139 +796,211 @@ binner <- function(var) {
       })
 
       # Generate a summary of the data ----
-#       output$summary <- renderPrint({
-#         datos <- input$file1
-#         if (is.null(datos))
-#           muestra <- var
-# 		else{
-# 			if(input$header)
-# 			{
-# 			muestra = scan(datos$datapath,skip=1)
-# 			}
-# 			else{
-# 			muestra = scan(datos$datapath)
-# 			}
-#         }
-#         summary(muestra)
-#       })
+      #       output$summary <- renderPrint({
+      #         datos <- input$file1
+      #         if (is.null(datos))
+      #           muestra <- var
+      # 		else{
+      # 			if(input$header)
+      # 			{
+      # 			muestra = scan(datos$datapath,skip=1)
+      # 			}
+      # 			else{
+      # 			muestra = scan(datos$datapath)
+      # 			}
+      #         }
+      #         summary(muestra)
+      #       })
 
-        #########Resumen y error############
-        output$resumen2 <- renderPrint({
+      #########Resumen y error############
+      output$resumen2 <- renderPrint({
 
-          mydata=inFile()
-          if (is.null(mydata))
-            return(NULL)
-          tipoR <- as.numeric(input$t_suavizado)
-          ##f <- as.numeric(input$frecuencia_usuario)
-          f <- 12
-          ##p <- as.numeric(input$n)
-          p <- 12
-          ts.data<-serieTiempo(mydata,f)
-          x.fit<-aprendizaje(mydata,f,p)
-          x.for<-pronostico(mydata,f,p)
-          if(tipoR==1)
-          {
-            msimple<-HoltWinters(x=x.fit,alpha = NULL, beta = FALSE, gamma = FALSE)
-            msimple
+        mydata=inFile()
+        if (is.null(mydata))
+          return(NULL)
+        tipoR <- as.numeric(input$t_suavizado)
+        f <- as.numeric(input$frecuencia_usuario)
+        ##f <- 12
+        p <- as.numeric(input$n)
+        ##p <- 12
+        ts.data<-serieTiempo(mydata,f)
+        x.fit<-aprendizaje(mydata,f,p)
+        x.for<-pronostico(mydata,f,p)
+        if(tipoR==1)
+        {
+          msimple<-HoltWinters(x=x.fit,alpha = NULL, beta = FALSE, gamma = FALSE)
+          msimple
 
-          }
+        }
 
-          else if(tipoR==2)
-          {
+        else if(tipoR==2)
+        {
 
-            mdouble<-HoltWinters(x=x.fit,alpha = NULL, beta = NULL, gamma = FALSE)
-            mdouble
-          }
-          else if(tipoR==3)
-          {
-            mtripleAdd<-HoltWinters(x=x.fit,seasonal = "additive")
-            mtripleAdd
-          }
-          else if(tipoR==4)
-          {
+          mdouble<-HoltWinters(x=x.fit,alpha = NULL, beta = NULL, gamma = FALSE)
+          mdouble
+        }
+        else if(tipoR==3)
+        {
+          mtripleAdd<-HoltWinters(x=x.fit,seasonal = "additive")
+          mtripleAdd
+        }
+        else if(tipoR==4)
+        {
 
-            mtripleMult<-HoltWinters(x=x.fit,seasonal = "multiplicative")
-            mtripleMult
+          mtripleMult<-HoltWinters(x=x.fit,seasonal = "multiplicative")
+          mtripleMult
 
-          }
-          else if (tipoR==5)
-          {
-            t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
-            rlineal <- lm(ts.data~t)
-            AIC(rlineal)
-          }
-          else if (tipoR==6)
-          {
-            t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
-            tt<- t*t
-            rcuadratica <- lm(ts.data~t+tt)
-            AIC(rcuadratica)
-            #output$resumen2 <- renderPrint({AIC(rcuadratica)})
-          }
-          else if (tipoR==7)
-          {
-            t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
-            tt<- t*t
-            ttt<-t*t*t
-            rcubica <- lm(ts.data~t+tt+ttt)
-            AIC(rcubica)
-          }
-          else if (tipoR==8)
-          {
-            T=length(ts.data)           # Variable independiente t: Tiempo
-            t=seq(1:(T-p))
-            It=seasonaldummy(x.fit)
-            restacional = lm(x.fit ~ t + It)
-            summary(restacional)
-          }
+        }
+        else if (tipoR==5)
+        {
+          t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
+          rlineal <- lm(ts.data~t)
+          summary(rlineal)
+        }
+        else if (tipoR==6)
+        {
+          t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
+          tt<- t*t
+          rcuadratica <- lm(ts.data~t+tt)
+          summary(rcuadratica)
+          #output$resumen2 <- renderPrint({AIC(rcuadratica)})
+        }
+        else if (tipoR==7)
+        {
+          t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
+          tt<- t*t
+          ttt<-t*t*t
+          rcubica <- lm(ts.data~t+tt+ttt)
+          summary(rcubica)
+        }
+        else if (tipoR==8)
+        {
+          T=length(ts.data)           # Variable independiente t: Tiempo
+          t=seq(1:(T-p))
+          It=seasonaldummy(x.fit)
+          restacional = lm(x.fit ~ t + It)
+          summary(restacional)
+        }
 
-        })
+      })
 
-        # output$error <- renderPrint({
-        #
-        #   mydata=inFile()
-        #   if (is.null(mydata))
-        #     return(NULL)
-        #   tipoR <- as.numeric(input$t_suavizado)
-        #   ##f <- as.numeric(input$frecuencia_usuario)
-        #   f <- 12
-        #   ##p <- as.numeric(input$n)
-        #   p <- 12
-        #   ts.data<-serieTiempo(mydata,f)
-        #   x.fit<-aprendizaje(mydata,f,p)
-        #   x.for<-pronostico(mydata,f,p)
-        #   if(tipoR==1)
-        #   {
-        #     msimple<-HoltWinters(x=x.fit,alpha = NULL, beta = FALSE, gamma = FALSE)
-        #     paste("Error:",msimple$SSE)
-        #
-        #   }
-        #
-        #   else if(tipoR==2)
-        #   {
-        #
-        #     mdouble<-HoltWinters(x=x.fit,alpha = NULL, beta = NULL, gamma = FALSE)
-        #     paste("Error:",mdouble$SSE)
-        #   }
-        #   else if(tipoR==3)
-        #   {
-        #     mtripleAdd<-HoltWinters(x=x.fit,seasonal = "additive")
-        #     paste("Error:",mtripleAdd$SSE)
-        #   }
-        #   else if(tipoR==4)
-        #   {
-        #
-        #     mtripleMult<-HoltWinters(x=x.fit,seasonal = "multiplicative")
-        #     paste("Error:",mtripleMult$SSE)
-        #
-        #   }
-        #   else
-        #   {
-        #     NULL
-        #   }
-        #
-        # })
-        ################
+      output$resumen3 <- renderPrint({
+
+        mydata=inFile()
+        if (is.null(mydata))
+          return(NULL)
+        tipoR <- as.numeric(input$t_suavizado)
+        f <- as.numeric(input$frecuencia_usuario)
+        ##f <- 12
+        p <- as.numeric(input$n)
+        ##p <- 12
+        ts.data<-serieTiempo(mydata,f)
+        x.fit<-aprendizaje(mydata,f,p)
+        x.for<-pronostico(mydata,f,p)
+        if(tipoR==1)
+        {
+          msimple<-HoltWinters(x=x.fit,alpha = NULL, beta = FALSE, gamma = FALSE)
+          #AIC(x.for$model)
+          #AIC(x$model)
+
+        }
+
+        else if(tipoR==2)
+        {
+
+          mdouble<-HoltWinters(x=x.fit,alpha = NULL, beta = NULL, gamma = FALSE)
+          mdouble
+        }
+        else if(tipoR==3)
+        {
+          mtripleAdd<-HoltWinters(x=x.fit,seasonal = "additive")
+          mtripleAdd
+        }
+        else if(tipoR==4)
+        {
+
+          mtripleMult<-HoltWinters(x=x.fit,seasonal = "multiplicative")
+          mtripleMult
+
+        }
+        else if (tipoR==5)
+        {
+          t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
+          rlineal <- lm(ts.data~t)
+          AIC(rlineal)
+        }
+        else if (tipoR==6)
+        {
+          t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
+          tt<- t*t
+          rcuadratica <- lm(ts.data~t+tt)
+          AIC(rcuadratica)
+          #output$resumen2 <- renderPrint({AIC(rcuadratica)})
+        }
+        else if (tipoR==7)
+        {
+          t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
+          tt<- t*t
+          ttt<-t*t*t
+          rcubica <- lm(ts.data~t+tt+ttt)
+          AIC(rcubica)
+        }
+        else if (tipoR==8)
+        {
+          T=length(ts.data)           # Variable independiente t: Tiempo
+          t=seq(1:(T-p))
+          It=seasonaldummy(x.fit)
+          restacional = lm(x.fit ~ t + It)
+          AIC(restacional)
+        }
+
+      })
+
+      # output$error <- renderPrint({
+      #
+      #   mydata=inFile()
+      #   if (is.null(mydata))
+      #     return(NULL)
+      #   tipoR <- as.numeric(input$t_suavizado)
+      #   ##f <- as.numeric(input$frecuencia_usuario)
+      #   f <- 12
+      #   ##p <- as.numeric(input$n)
+      #   p <- 12
+      #   ts.data<-serieTiempo(mydata,f)
+      #   x.fit<-aprendizaje(mydata,f,p)
+      #   x.for<-pronostico(mydata,f,p)
+      #   if(tipoR==1)
+      #   {
+      #     msimple<-HoltWinters(x=x.fit,alpha = NULL, beta = FALSE, gamma = FALSE)
+      #     paste("Error:",msimple$SSE)
+      #
+      #   }
+      #
+      #   else if(tipoR==2)
+      #   {
+      #
+      #     mdouble<-HoltWinters(x=x.fit,alpha = NULL, beta = NULL, gamma = FALSE)
+      #     paste("Error:",mdouble$SSE)
+      #   }
+      #   else if(tipoR==3)
+      #   {
+      #     mtripleAdd<-HoltWinters(x=x.fit,seasonal = "additive")
+      #     paste("Error:",mtripleAdd$SSE)
+      #   }
+      #   else if(tipoR==4)
+      #   {
+      #
+      #     mtripleMult<-HoltWinters(x=x.fit,seasonal = "multiplicative")
+      #     paste("Error:",mtripleMult$SSE)
+      #
+      #   }
+      #   else
+      #   {
+      #     NULL
+      #   }
+      #
+      # })
+      ################
 
       # Generate an HTML table view of the data ----
       ## output$table <- renderTable({
@@ -936,37 +1011,37 @@ binner <- function(var) {
         datos <- input$file1
         if (is.null(datos))
           muestra <- var
-		else{
-			if(input$header)
-			{
-			muestra = scan(datos$datapath,skip=1)
-			}
-			else{
-			muestra = scan(datos$datapath)
-			}
+        else{
+          if(input$header)
+          {
+            muestra = scan(datos$datapath,skip=1)
+          }
+          else{
+            muestra = scan(datos$datapath)
+          }
         }
         muestra
       })
 
 
-        #Generacion Tabla
-        #output$ensayo <- renderPrint({
-        #  datos <- input$file1
-        #  if (is.null(datos))
-        #    muestra <- var
-        #  else{
-        #    if(input$header)
-        #    {
-        #      muestra = scan(datos$datapath,skip=1)
-        #    }
-        #    else{
-        #      muestra = scan(datos$datapath)
-        #    }
-        #  }
-        #  #summary(muestra)
-        #  summary(muestra)
-        #
-        #})
+      #Generacion Tabla
+      #output$ensayo <- renderPrint({
+      #  datos <- input$file1
+      #  if (is.null(datos))
+      #    muestra <- var
+      #  else{
+      #    if(input$header)
+      #    {
+      #      muestra = scan(datos$datapath,skip=1)
+      #    }
+      #    else{
+      #      muestra = scan(datos$datapath)
+      #    }
+      #  }
+      #  #summary(muestra)
+      #  summary(muestra)
+      #
+      #})
 
 
     }
