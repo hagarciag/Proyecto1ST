@@ -117,7 +117,7 @@ binner <- function(var) {
           tabsetPanel(type = "tabs",
                       tabPanel("Distribuciones", value=1, plotOutput("plot"),br(),DT::dataTableOutput('estadisticos'),br(),verbatimTextOutput("ensayo")),
                       tabPanel("Grafico", value=2,plotOutput("plot1"),plotOutput("plot2")),
-                      tabPanel("Análisis series de tiempo", value=3, verbatimTextOutput("resumen"),br(),"AIC",verbatimTextOutput("resumen3")),
+                      tabPanel("Análisis series de tiempo", value=3, verbatimTextOutput("resumen"),br(),verbatimTextOutput("resumen3")),
 #                      tabPanel("Análisis series de tiempo", value=3, verbatimTextOutput("resumen"),br(),verbatimTextOutput("resumen2"),br(),"AIC",verbatimTextOutput("resumen3")),
                       tabPanel("Table", value=4, tableOutput("table")),
                       id = "tabselected"
@@ -900,6 +900,7 @@ binner <- function(var) {
         if(tipoR==1)
         {
           msimple<-HoltWinters(x=x.fit,alpha = NULL, beta = FALSE, gamma = FALSE)
+          paste("SSE: ",msimple$SSE)
           #AIC(x.for$model)
           #AIC(x$model)
 
@@ -909,33 +910,35 @@ binner <- function(var) {
         {
 
           mdouble<-HoltWinters(x=x.fit,alpha = NULL, beta = NULL, gamma = FALSE)
-          mdouble
+          paste("SSE: ",mdouble$SSE)
+          #mdouble
         }
         else if(tipoR==3)
         {
           mtripleAdd<-HoltWinters(x=x.fit,seasonal = "additive")
-          mtripleAdd
+          paste("SSE: ",mtripleAdd$SSE)
+          #mtripleAdd
         }
         else if(tipoR==4)
         {
 
           mtripleMult<-HoltWinters(x=x.fit,seasonal = "multiplicative")
-          mtripleMult
+          paste("SSE: ",mtripleMult$SSE)
+          #mtripleMult
 
         }
         else if (tipoR==5)
         {
           t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
           rlineal <- lm(ts.data~t)
-          AIC(rlineal)
+          paste("AIC: ",AIC(rlineal))
         }
         else if (tipoR==6)
         {
           t<- seq(1:length(ts.data))                          # Variable independiente t: Tiempo
           tt<- t*t
           rcuadratica <- lm(ts.data~t+tt)
-          AIC(rcuadratica)
-          #output$resumen2 <- renderPrint({AIC(rcuadratica)})
+          paste("AIC: ",AIC(rcuadratica))
         }
         else if (tipoR==7)
         {
@@ -943,7 +946,7 @@ binner <- function(var) {
           tt<- t*t
           ttt<-t*t*t
           rcubica <- lm(ts.data~t+tt+ttt)
-          AIC(rcubica)
+          paste("AIC: ",AIC(rcubica))
         }
         else if (tipoR==8)
         {
@@ -951,7 +954,7 @@ binner <- function(var) {
           t=seq(1:(T-p))
           It=seasonaldummy(x.fit)
           restacional = lm(x.fit ~ t + It)
-          AIC(restacional)
+          paste("AIC: ",AIC(restacional))
         }
 
       })
