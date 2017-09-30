@@ -402,7 +402,7 @@ binner <- function(var) {
           options(repr.plot.width=10, repr.plot.height=6)
           residual<-rlineal$residuals
           plot(t,residual,
-               type='h',
+               #type='h',
                ylab='',main="Residuales Modelo Lineal",
                col="#75AADB",lwd=3)
 
@@ -416,7 +416,8 @@ binner <- function(var) {
           qqnorm(residual)               # Gráfica qqnorm para probar normalidad
           qqline(residual,col='#75AADB',lwd=3)         # Linea
 
-          acf(residual, ci.type="ma",60) # Prueba ACF
+          #acf(residual, ci.type="ma",60) # Prueba ACF
+          pacf(residual, ci.type="ma",60) # Prueba PACF
         }
         else if (tipoR==6)
         {
@@ -427,7 +428,7 @@ binner <- function(var) {
           options(repr.plot.width=10, repr.plot.height=6)
           residual<-rcuadratica$residuals
           plot(t,residual,
-               type='h',
+               #type='h',
                ylab='',main="Residuales Modelo Cuadrático",
                col="purple",lwd=3)
 
@@ -441,7 +442,8 @@ binner <- function(var) {
           qqnorm(residual)               # Gráfica qqnorm para probar normalidad
           qqline(residual,col='purple',lwd=3)         # Linea
 
-          acf(residual, ci.type="ma",60) # Prueba ACF
+          #acf(residual, ci.type="ma",60) # Prueba ACF
+          pacf(residual, ci.type="ma",60) # Prueba PACF
         }
         else if (tipoR==7)
         {
@@ -453,7 +455,7 @@ binner <- function(var) {
           options(repr.plot.width=10, repr.plot.height=6)
           residual<-rcubica$residuals
           plot(t,residual,
-               type='h',
+               #type='h',
                ylab='',main="Residuales Modelo Cubico",
                col="#75AADB",lwd=3)
 
@@ -467,7 +469,8 @@ binner <- function(var) {
           qqnorm(residual)               # Gráfica qqnorm para probar normalidad
           qqline(residual,col='#75AADB',lwd=3)         # Linea
 
-          acf(residual, ci.type="ma",60) # Prueba ACF
+          #acf(residual, ci.type="ma",60) # Prueba ACF
+          pacf(residual, ci.type="ma",60) # Prueba PACF
         }
         else if (tipoR==8)
         {
